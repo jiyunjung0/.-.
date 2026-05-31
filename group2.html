@@ -772,7 +772,7 @@
     font-size: 11px;
     color: var(--text-tertiary);
   }
-  .two-map-svg-wrap { padding: 0 12px 12px; min-height: 220px; }
+  .two-map-svg-wrap { padding: 0 12px 12px; }
 
   /* 통계 카드 행 */
   .two-stat-row {
@@ -2426,73 +2426,17 @@ function renderMiniMap2(containerId, guName, slot) {
   const container = document.getElementById(containerId);
   const info = SEOUL_DATA.districts[guName];
   if (!container || !info) return;
-
-  const guPath = info.d;
-  const dongs = (typeof DONG_DATA !== 'undefined' && DONG_DATA[guName]) ? DONG_DATA[guName] : [];
-
-  const nums = (guPath.match(/-?\d+\.?\d*/g)||[]).map(Number);
+  const nums = (info.d.match(/-?\d+\.?\d*/g)||[]).map(Number);
   const xs = nums.filter((_,i)=>i%2===0), ys = nums.filter((_,i)=>i%2===1);
   const minx=Math.min(...xs), maxx=Math.max(...xs), miny=Math.min(...ys), maxy=Math.max(...ys);
-  const pad = Math.max(maxx-minx, maxy-miny)*0.06;
+  const pad = Math.max(maxx-minx, maxy-miny)*0.1;
   const vbX=minx-pad, vbY=miny-pad, vbW=(maxx-minx)+pad*2, vbH=(maxy-miny)+pad*2;
-  const scale = Math.max(vbW,vbH)/600;
-
-  const clipId = `miniclip-${slot}-${guName.replace(/[^a-zA-Z0-9]/g,'_')}`;
-
-  // 외곽선 색상 (A: 파랑, B: 주황)
-  const outerStroke = slot==='a' ? '#3b82f6' : '#f97316';
-
-  let svg = `<svg viewBox="${vbX} ${vbY} ${vbW} ${vbH}" xmlns="${NS2}" style="width:100%;height:200px;display:block" preserveAspectRatio="xMidYMid meet">`;
-  svg += `<defs><clipPath id="${clipId}"><path d="${guPath}"/></clipPath></defs>`;
-
-  // 배경 흰색
-  svg += `<path d="${guPath}" fill="#ffffff" stroke="${outerStroke}" stroke-width="${3*scale}" stroke-linejoin="round"/>`;
-
-  // 동 경계
-  svg += `<g clip-path="url(#${clipId})">`;
-  dongs.forEach((dong, i) => {
-    if (!dong.d) return;
-    const fill = i%2===0 ? '#fafbfc' : '#f3f4f6';
-    svg += `<path d="${dong.d}" fill="${fill}" stroke="#cbd2d9" stroke-width="${1.0*scale}" stroke-linejoin="round"/>`;
-  });
-  svg += `</g>`;
-
-  // 구 외곽 재강조
-  svg += `<path d="${guPath}" fill="none" stroke="${outerStroke}" stroke-width="${3*scale}" stroke-linejoin="round"/>`;
-
-  // 동 이름 + CCTV 원
-  dongs.forEach(dong => {
-    svg += `<text x="${dong.cx}" y="${dong.cy - 2*scale}" text-anchor="middle" font-size="${11*scale}px" font-weight="600" fill="#1a202c" style="paint-order:stroke;stroke:rgba(255,255,255,0.9);stroke-width:${3*scale}px;">${dong.name}</text>`;
-
-    if (state.cctvData && state.cctvData[guName]) {
-      const normalizedName = normalizeDongName(dong.name);
-      const cctvInfo = state.cctvData[guName][normalizedName];
-      if (cctvInfo && cctvInfo.ratio > 0) {
-        cctvRadiusScale.domain([0, state.cctvMaxRatio]);
-        const r = cctvRadiusScale(cctvInfo.ratio) * scale;
-        svg += `<circle cx="${dong.cx}" cy="${dong.cy}" r="${r}" fill="#a78bfa" fill-opacity="0.45" stroke="#7c3aed" stroke-width="${1.2*scale}"><title>${dong.name} CCTV 비율: ${cctvInfo.ratio.toFixed(1)}</title></circle>`;
-        svg += `<text x="${dong.cx}" y="${dong.cy+r+12*scale}" text-anchor="middle" font-size="${10*scale}px" font-weight="700" fill="#6d28d9" font-family="'JetBrains Mono',monospace">${Math.round(cctvInfo.ratio)}</text>`;
-      }
-    }
-  });
-
-  // 경찰서 마커
-  if (state.policeData) {
-    state.policeData.forEach(p => {
-      if (p.address.includes(guName)) {
-        const px = scaleX(p.lng);
-        const py = scaleY(p.lat);
-        const r = 11*scale;
-        svg += `<g transform="translate(${px},${py})">
-          <circle cx="0" cy="0" r="${r}" fill="#eab308" stroke="white" stroke-width="${2*scale}"><title>${p.name} (${p.type})</title></circle>
-          <text x="0" y="${4*scale}" text-anchor="middle" font-size="${10*scale}px" font-weight="700" fill="white" font-family="'JetBrains Mono',monospace">P</text>
-        </g>`;
-      }
-    });
-  }
-
-  svg += `</svg>`;
-  container.innerHTML = svg;
+  const fill = slot==='a'?'rgba(59,130,246,0.2)':'rgba(249,115,22,0.2)';
+  const stroke = slot==='a'?'#3b82f6':'#f97316';
+  const sw = Math.max(vbW,vbH)*0.006;
+  container.innerHTML = `<svg viewBox="${vbX} ${vbY} ${vbW} ${vbH}" xmlns="${NS2}" style="width:100%;height:130px;display:block">
+    <path d="${info.d}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" stroke-linejoin="round"/>
+  </svg>`;
 }
 
 function renderTwoBarChart2(guA, guB, yr) {
