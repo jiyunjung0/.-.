@@ -758,27 +758,21 @@
     border-radius: 14px;
     overflow: hidden;
   }
-  .two-map-card.card-a { border-color: rgba(59,130,246,0.5); }
-  .two-map-card.card-b { border-color: rgba(249,115,22,0.5); }
+  .two-map-card.card-a { border-color: rgba(59,130,246,0.4); }
+  .two-map-card.card-b { border-color: rgba(249,115,22,0.4); }
   .two-map-card-label {
-    padding: 12px 16px 4px;
+    padding: 10px 14px 6px;
     font-weight: 700;
-    font-size: 16px;
+    font-size: 15px;
   }
   .two-map-card.card-a .two-map-card-label { color: var(--accent-blue); }
   .two-map-card.card-b .two-map-card-label { color: var(--accent-orange); }
   .two-map-card-sub {
-    padding: 0 16px 10px;
-    font-size: 12px;
+    padding: 0 14px 10px;
+    font-size: 11px;
     color: var(--text-tertiary);
   }
-  .two-map-svg-wrap {
-    padding: 0 14px 14px;
-    min-height: 340px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
+  .two-map-svg-wrap { padding: 0 12px 12px; min-height: 220px; }
 
   /* 통계 카드 행 */
   .two-stat-row {
@@ -1241,13 +1235,6 @@
           <svg id="twoBarSvg" width="100%" viewBox="0 0 420 220" preserveAspectRatio="xMidYMid meet" style="display:block"></svg>
           <svg id="twoArrestBarSvg" width="100%" viewBox="0 0 420 220" preserveAspectRatio="xMidYMid meet" style="display:block"></svg>
         </div>
-      </div>
-
-      <!-- 산점도: 25개 구 전체 포지셔닝 -->
-      <div class="two-chart-section">
-        <h3>서울 25개 구 포지셔닝 <span style="font-size:13px;font-weight:400;color:var(--text-tertiary)">— x축: 범죄율, y축: 검거율</span></h3>
-        <div style="font-size:12px;color:var(--text-tertiary);margin-bottom:12px;">전체 구 중 두 구가 어디에 위치하는지 한눈에 확인하세요</div>
-        <svg id="twoScatterSvg" width="100%" viewBox="0 0 800 420" preserveAspectRatio="xMidYMid meet" style="display:block;border:1px solid var(--border);border-radius:12px;"></svg>
       </div>
 
       <!-- 연도별 추이 -->
@@ -2429,7 +2416,6 @@ function openCompareTwoModal(guA, guB) {
   });
 
   renderTwoBarChart2(guA, guB, yr);
-  renderTwoScatterChart(guA, guB, yr);
   renderTwoTrendChart2(guA, guB);
   renderTwoCrimeChart2(guA, guB, yr);
 
@@ -2447,71 +2433,59 @@ function renderMiniMap2(containerId, guName, slot) {
   const nums = (guPath.match(/-?\d+\.?\d*/g)||[]).map(Number);
   const xs = nums.filter((_,i)=>i%2===0), ys = nums.filter((_,i)=>i%2===1);
   const minx=Math.min(...xs), maxx=Math.max(...xs), miny=Math.min(...ys), maxy=Math.max(...ys);
-  const pad = Math.max(maxx-minx, maxy-miny)*0.07;
+  const pad = Math.max(maxx-minx, maxy-miny)*0.06;
   const vbX=minx-pad, vbY=miny-pad, vbW=(maxx-minx)+pad*2, vbH=(maxy-miny)+pad*2;
   const scale = Math.max(vbW,vbH)/600;
 
   const clipId = `miniclip-${slot}-${guName.replace(/[^a-zA-Z0-9]/g,'_')}`;
+
+  // 외곽선 색상 (A: 파랑, B: 주황)
   const outerStroke = slot==='a' ? '#3b82f6' : '#f97316';
 
-  let svg = `<svg viewBox="${vbX} ${vbY} ${vbW} ${vbH}" xmlns="${NS2}" style="width:100%;height:320px;display:block" preserveAspectRatio="xMidYMid meet">`;
+  let svg = `<svg viewBox="${vbX} ${vbY} ${vbW} ${vbH}" xmlns="${NS2}" style="width:100%;height:200px;display:block" preserveAspectRatio="xMidYMid meet">`;
   svg += `<defs><clipPath id="${clipId}"><path d="${guPath}"/></clipPath></defs>`;
 
-  // 배경
-  svg += `<path d="${guPath}" fill="#f8fafc" stroke="${outerStroke}" stroke-width="${3.5*scale}" stroke-linejoin="round"/>`;
+  // 배경 흰색
+  svg += `<path d="${guPath}" fill="#ffffff" stroke="${outerStroke}" stroke-width="${3*scale}" stroke-linejoin="round"/>`;
 
   // 동 경계
   svg += `<g clip-path="url(#${clipId})">`;
   dongs.forEach((dong, i) => {
     if (!dong.d) return;
-    const fill = i%2===0 ? '#ffffff' : '#f1f5f9';
-    svg += `<path d="${dong.d}" fill="${fill}" stroke="#cbd2d9" stroke-width="${1.2*scale}" stroke-linejoin="round"/>`;
+    const fill = i%2===0 ? '#fafbfc' : '#f3f4f6';
+    svg += `<path d="${dong.d}" fill="${fill}" stroke="#cbd2d9" stroke-width="${1.0*scale}" stroke-linejoin="round"/>`;
   });
   svg += `</g>`;
 
   // 구 외곽 재강조
-  svg += `<path d="${guPath}" fill="none" stroke="${outerStroke}" stroke-width="${3.5*scale}" stroke-linejoin="round"/>`;
+  svg += `<path d="${guPath}" fill="none" stroke="${outerStroke}" stroke-width="${3*scale}" stroke-linejoin="round"/>`;
 
-  // CCTV 원 먼저 (라벨 뒤에 깔리도록)
-  if (state.cctvData && state.cctvData[guName]) {
-    dongs.forEach(dong => {
-      const normalizedName = normalizeDongName(dong.name);
-      const cctvInfo = state.cctvData[guName][normalizedName];
-      if (cctvInfo && cctvInfo.ratio > 0) {
-        cctvRadiusScale.domain([0, state.cctvMaxRatio]);
-        const r = cctvRadiusScale(cctvInfo.ratio) * scale * 1.3;
-        svg += `<circle cx="${dong.cx}" cy="${dong.cy}" r="${r}" fill="#a78bfa" fill-opacity="0.4" stroke="#7c3aed" stroke-width="${1.5*scale}"><title>${dong.name} CCTV 비율: ${cctvInfo.ratio.toFixed(1)}</title></circle>`;
-      }
-    });
-  }
-
-  // 동 이름 + CCTV 수치 라벨
+  // 동 이름 + CCTV 원
   dongs.forEach(dong => {
-    // 동 이름
-    svg += `<text x="${dong.cx}" y="${dong.cy}" text-anchor="middle" dominant-baseline="middle" font-size="${13*scale}px" font-weight="700" fill="#1e293b" style="paint-order:stroke;stroke:rgba(255,255,255,0.95);stroke-width:${4*scale}px;">${dong.name}</text>`;
+    svg += `<text x="${dong.cx}" y="${dong.cy - 2*scale}" text-anchor="middle" font-size="${11*scale}px" font-weight="600" fill="#1a202c" style="paint-order:stroke;stroke:rgba(255,255,255,0.9);stroke-width:${3*scale}px;">${dong.name}</text>`;
 
-    // CCTV 수치
     if (state.cctvData && state.cctvData[guName]) {
       const normalizedName = normalizeDongName(dong.name);
       const cctvInfo = state.cctvData[guName][normalizedName];
       if (cctvInfo && cctvInfo.ratio > 0) {
         cctvRadiusScale.domain([0, state.cctvMaxRatio]);
-        const r = cctvRadiusScale(cctvInfo.ratio) * scale * 1.3;
-        svg += `<text x="${dong.cx}" y="${dong.cy + r + 14*scale}" text-anchor="middle" font-size="${11*scale}px" font-weight="700" fill="#6d28d9" font-family="'JetBrains Mono',monospace">${Math.round(cctvInfo.ratio)}</text>`;
+        const r = cctvRadiusScale(cctvInfo.ratio) * scale;
+        svg += `<circle cx="${dong.cx}" cy="${dong.cy}" r="${r}" fill="#a78bfa" fill-opacity="0.45" stroke="#7c3aed" stroke-width="${1.2*scale}"><title>${dong.name} CCTV 비율: ${cctvInfo.ratio.toFixed(1)}</title></circle>`;
+        svg += `<text x="${dong.cx}" y="${dong.cy+r+12*scale}" text-anchor="middle" font-size="${10*scale}px" font-weight="700" fill="#6d28d9" font-family="'JetBrains Mono',monospace">${Math.round(cctvInfo.ratio)}</text>`;
       }
     }
   });
 
-  // 경찰서 마커 (가장 위에)
+  // 경찰서 마커
   if (state.policeData) {
     state.policeData.forEach(p => {
       if (p.address.includes(guName)) {
         const px = scaleX(p.lng);
         const py = scaleY(p.lat);
-        const r = 14*scale;
+        const r = 11*scale;
         svg += `<g transform="translate(${px},${py})">
-          <circle cx="0" cy="0" r="${r}" fill="#eab308" stroke="white" stroke-width="${2.5*scale}"><title>${p.name} (${p.type})</title></circle>
-          <text x="0" y="${5*scale}" text-anchor="middle" font-size="${12*scale}px" font-weight="800" fill="white" font-family="'JetBrains Mono',monospace">P</text>
+          <circle cx="0" cy="0" r="${r}" fill="#eab308" stroke="white" stroke-width="${2*scale}"><title>${p.name} (${p.type})</title></circle>
+          <text x="0" y="${4*scale}" text-anchor="middle" font-size="${10*scale}px" font-weight="700" fill="white" font-family="'JetBrains Mono',monospace">P</text>
         </g>`;
       }
     });
@@ -2519,190 +2493,6 @@ function renderMiniMap2(containerId, guName, slot) {
 
   svg += `</svg>`;
   container.innerHTML = svg;
-}
-
-function renderTwoScatterChart(guA, guB, yr) {
-  const svg = document.getElementById('twoScatterSvg');
-  if (!svg || !state.crimeData) return;
-  svg.innerHTML = '';
-
-  const W = 800, H = 420;
-  const ml = 70, mr = 40, mt = 30, mb = 60;
-  const iW = W - ml - mr, iH = H - mt - mb;
-
-  // 25개 구 전체 데이터 수집
-  const allGu = Object.keys(SEOUL_DATA.districts);
-  const points = allGu.map(gu => ({
-    gu,
-    crime: state.crimeData[gu]?.[yr]?.crime || 0,
-    arrest: state.crimeData[gu]?.[yr]?.arrest || 0,
-  })).filter(p => p.crime > 0);
-
-  const crimeVals = points.map(p => p.crime);
-  const arrestVals = points.map(p => p.arrest);
-  const minCrime = Math.min(...crimeVals) * 0.9;
-  const maxCrime = Math.max(...crimeVals) * 1.05;
-  const minArrest = Math.min(...arrestVals) * 0.9;
-  const maxArrest = Math.max(...arrestVals) * 1.05;
-
-  const xP = v => ml + ((v - minCrime) / (maxCrime - minCrime)) * iW;
-  const yP = v => mt + iH - ((v - minArrest) / (maxArrest - minArrest)) * iH;
-
-  // 배경 사분면 (낮은 범죄+높은 검거 = 초록, 높은 범죄+낮은 검거 = 빨강)
-  const midCrime = (minCrime + maxCrime) / 2;
-  const midArrest = (minArrest + maxArrest) / 2;
-  const mx = xP(midCrime), my = yP(midArrest);
-
-  const quadrants = [
-    { x: ml, y: mt,  w: mx-ml,   h: my-mt,   fill: 'rgba(249,115,22,0.04)', label: '범죄↑ 검거↑' },
-    { x: mx, y: mt,  w: W-mr-mx, h: my-mt,   fill: 'rgba(230,57,70,0.06)',  label: '범죄↑↑ 검거↑' },
-    { x: ml, y: my,  w: mx-ml,   h: H-mb-my, fill: 'rgba(6,167,125,0.06)',  label: '범죄↓ 검거↓' },
-    { x: mx, y: my,  w: W-mr-mx, h: H-mb-my, fill: 'rgba(249,115,22,0.04)', label: '범죄↑ 검거↓' },
-  ];
-  quadrants.forEach(q => {
-    const r = document.createElementNS(NS2, 'rect');
-    r.setAttribute('x', q.x); r.setAttribute('y', q.y);
-    r.setAttribute('width', q.w); r.setAttribute('height', q.h);
-    r.setAttribute('fill', q.fill);
-    svg.appendChild(r);
-  });
-
-  // 중앙선 (평균선)
-  const midLineX = document.createElementNS(NS2, 'line');
-  midLineX.setAttribute('x1', mx); midLineX.setAttribute('x2', mx);
-  midLineX.setAttribute('y1', mt); midLineX.setAttribute('y2', H - mb);
-  midLineX.setAttribute('stroke', '#cbd2d9'); midLineX.setAttribute('stroke-dasharray', '5,4');
-  midLineX.setAttribute('stroke-width', '1.5');
-  svg.appendChild(midLineX);
-
-  const midLineY = document.createElementNS(NS2, 'line');
-  midLineY.setAttribute('x1', ml); midLineY.setAttribute('x2', W - mr);
-  midLineY.setAttribute('y1', my); midLineY.setAttribute('y2', my);
-  midLineY.setAttribute('stroke', '#cbd2d9'); midLineY.setAttribute('stroke-dasharray', '5,4');
-  midLineY.setAttribute('stroke-width', '1.5');
-  svg.appendChild(midLineY);
-
-  // 축선
-  const axisX = document.createElementNS(NS2, 'line');
-  axisX.setAttribute('x1', ml); axisX.setAttribute('x2', W - mr);
-  axisX.setAttribute('y1', H - mb); axisX.setAttribute('y2', H - mb);
-  axisX.setAttribute('stroke', '#94a3b8'); axisX.setAttribute('stroke-width', '1.5');
-  svg.appendChild(axisX);
-
-  const axisY = document.createElementNS(NS2, 'line');
-  axisY.setAttribute('x1', ml); axisY.setAttribute('x2', ml);
-  axisY.setAttribute('y1', mt); axisY.setAttribute('y2', H - mb);
-  axisY.setAttribute('stroke', '#94a3b8'); axisY.setAttribute('stroke-width', '1.5');
-  svg.appendChild(axisY);
-
-  // 눈금
-  for (let i = 0; i <= 5; i++) {
-    const xVal = minCrime + (maxCrime - minCrime) / 5 * i;
-    const x = xP(xVal);
-    const tick = document.createElementNS(NS2, 'line');
-    tick.setAttribute('x1', x); tick.setAttribute('x2', x);
-    tick.setAttribute('y1', H - mb); tick.setAttribute('y2', H - mb + 5);
-    tick.setAttribute('stroke', '#94a3b8');
-    svg.appendChild(tick);
-    const t = document.createElementNS(NS2, 'text');
-    t.setAttribute('x', x); t.setAttribute('y', H - mb + 18);
-    t.setAttribute('text-anchor', 'middle'); t.setAttribute('font-size', '11');
-    t.setAttribute('fill', '#64748b'); t.textContent = Math.round(xVal);
-    svg.appendChild(t);
-  }
-  for (let i = 0; i <= 5; i++) {
-    const yVal = minArrest + (maxArrest - minArrest) / 5 * i;
-    const y = yP(yVal);
-    const tick = document.createElementNS(NS2, 'line');
-    tick.setAttribute('x1', ml - 5); tick.setAttribute('x2', ml);
-    tick.setAttribute('y1', y); tick.setAttribute('y2', y);
-    tick.setAttribute('stroke', '#94a3b8');
-    svg.appendChild(tick);
-    const t = document.createElementNS(NS2, 'text');
-    t.setAttribute('x', ml - 10); t.setAttribute('y', y + 4);
-    t.setAttribute('text-anchor', 'end'); t.setAttribute('font-size', '11');
-    t.setAttribute('fill', '#64748b'); t.textContent = yVal.toFixed(1) + '%';
-    svg.appendChild(t);
-  }
-
-  // 축 라벨
-  const xLabel = document.createElementNS(NS2, 'text');
-  xLabel.setAttribute('x', ml + iW / 2); xLabel.setAttribute('y', H - 8);
-  xLabel.setAttribute('text-anchor', 'middle'); xLabel.setAttribute('font-size', '13');
-  xLabel.setAttribute('font-weight', '600'); xLabel.setAttribute('fill', '#475569');
-  xLabel.textContent = '범죄율 (10만명당)';
-  svg.appendChild(xLabel);
-
-  const yLabel = document.createElementNS(NS2, 'text');
-  yLabel.setAttribute('transform', `rotate(-90)`);
-  yLabel.setAttribute('x', -(mt + iH / 2)); yLabel.setAttribute('y', 16);
-  yLabel.setAttribute('text-anchor', 'middle'); yLabel.setAttribute('font-size', '13');
-  yLabel.setAttribute('font-weight', '600'); yLabel.setAttribute('fill', '#475569');
-  yLabel.textContent = '검거율 (%)';
-  svg.appendChild(yLabel);
-
-  // 일반 구 점 먼저 그리기
-  points.forEach(p => {
-    if (p.gu === guA || p.gu === guB) return;
-    const cx = xP(p.crime), cy = yP(p.arrest);
-
-    const c = document.createElementNS(NS2, 'circle');
-    c.setAttribute('cx', cx); c.setAttribute('cy', cy);
-    c.setAttribute('r', '7'); c.setAttribute('fill', '#94a3b8');
-    c.setAttribute('fill-opacity', '0.55'); c.setAttribute('stroke', 'white');
-    c.setAttribute('stroke-width', '1.5');
-    const title = document.createElementNS(NS2, 'title');
-    title.textContent = `${p.gu} — 범죄율: ${p.crime.toFixed(1)}, 검거율: ${p.arrest.toFixed(1)}%`;
-    c.appendChild(title);
-    svg.appendChild(c);
-
-    // 구 이름 작게
-    const t = document.createElementNS(NS2, 'text');
-    t.setAttribute('x', cx + 9); t.setAttribute('y', cy + 4);
-    t.setAttribute('font-size', '10'); t.setAttribute('fill', '#94a3b8');
-    t.textContent = p.gu.replace('구', '');
-    svg.appendChild(t);
-  });
-
-  // 비교 두 구 강조 (나중에 그려서 위에 올라오게)
-  [[guA, '#3b82f6'], [guB, '#f97316']].forEach(([gu, color]) => {
-    const p = points.find(d => d.gu === gu);
-    if (!p) return;
-    const cx = xP(p.crime), cy = yP(p.arrest);
-
-    // 글로우 효과
-    const glow = document.createElementNS(NS2, 'circle');
-    glow.setAttribute('cx', cx); glow.setAttribute('cy', cy);
-    glow.setAttribute('r', '20'); glow.setAttribute('fill', color);
-    glow.setAttribute('fill-opacity', '0.15');
-    svg.appendChild(glow);
-
-    const c = document.createElementNS(NS2, 'circle');
-    c.setAttribute('cx', cx); c.setAttribute('cy', cy);
-    c.setAttribute('r', '12'); c.setAttribute('fill', color);
-    c.setAttribute('stroke', 'white'); c.setAttribute('stroke-width', '2.5');
-    const title = document.createElementNS(NS2, 'title');
-    title.textContent = `${p.gu} — 범죄율: ${p.crime.toFixed(1)}, 검거율: ${p.arrest.toFixed(1)}%`;
-    c.appendChild(title);
-    svg.appendChild(c);
-
-    // 라벨 박스
-    const labelText = `${gu} (${p.crime.toFixed(0)}, ${p.arrest.toFixed(1)}%)`;
-    const lx = cx + 16, ly = cy - 10;
-    const bg = document.createElementNS(NS2, 'rect');
-    bg.setAttribute('x', lx - 4); bg.setAttribute('y', ly - 13);
-    bg.setAttribute('width', labelText.length * 7.5); bg.setAttribute('height', 20);
-    bg.setAttribute('fill', color); bg.setAttribute('rx', '5');
-    bg.setAttribute('fill-opacity', '0.12');
-    svg.appendChild(bg);
-
-    const t = document.createElementNS(NS2, 'text');
-    t.setAttribute('x', lx); t.setAttribute('y', ly);
-    t.setAttribute('font-size', '13'); t.setAttribute('font-weight', '700');
-    t.setAttribute('fill', color);
-    t.textContent = labelText;
-    svg.appendChild(t);
-  });
 }
 
 function renderTwoBarChart2(guA, guB, yr) {
