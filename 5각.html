@@ -2213,94 +2213,61 @@ function renderMainScatter() {
 
   // 점 + hover 이벤트
   const tooltip = document.getElementById('scatterTooltip');
-
-  // hover된 구 이름 SVG 라벨 (하나만 재사용)
-  const hoverLabel = document.createElementNS(NS2, 'text');
-  hoverLabel.setAttribute('font-size', '13');
-  hoverLabel.setAttribute('font-weight', '700');
-  hoverLabel.setAttribute('fill', '#1e293b');
-  hoverLabel.style.pointerEvents = 'none';
-  hoverLabel.style.display = 'none';
-  svg.appendChild(hoverLabel);
-
-  const hoverLabelBg = document.createElementNS(NS2, 'rect');
-  hoverLabelBg.setAttribute('fill', 'white');
-  hoverLabelBg.setAttribute('rx', '4');
-  hoverLabelBg.setAttribute('fill-opacity', '0.88');
-  hoverLabelBg.style.pointerEvents = 'none';
-  hoverLabelBg.style.display = 'none';
-  svg.insertBefore(hoverLabelBg, hoverLabel); // 라벨 뒤에 bg
+  const svgRect = () => svg.getBoundingClientRect();
+  const vbScale = () => {
+    const r = svgRect();
+    return { sx: r.width / W, sy: r.height / H };
+  };
 
   points.forEach(p => {
     const cx = xP(p.crime), cy = yP(p.arrest);
 
-    // 글로우 원
-    const glow = document.createElementNS(NS2, 'circle');
-    glow.setAttribute('cx', cx); glow.setAttribute('cy', cy);
-    glow.setAttribute('r', '20'); glow.setAttribute('fill', '#3b82f6');
-    glow.setAttribute('fill-opacity', '0');
+    // 글로우 (hover 시)
+    const glow = document.createElementNS(NS2,'circle');
+    glow.setAttribute('cx',cx); glow.setAttribute('cy',cy);
+    glow.setAttribute('r','18'); glow.setAttribute('fill','#3b82f6');
+    glow.setAttribute('fill-opacity','0'); glow.setAttribute('class','scatter-glow');
     svg.appendChild(glow);
 
-    // 메인 점
-    const c = document.createElementNS(NS2, 'circle');
-    c.setAttribute('cx', cx); c.setAttribute('cy', cy);
-    c.setAttribute('r', '7'); c.setAttribute('fill', '#64748b');
-    c.setAttribute('fill-opacity', '0.65');
-    c.setAttribute('stroke', 'white'); c.setAttribute('stroke-width', '1.5');
+    const c = document.createElementNS(NS2,'circle');
+    c.setAttribute('cx',cx); c.setAttribute('cy',cy);
+    c.setAttribute('r','7'); c.setAttribute('fill','#64748b');
+    c.setAttribute('fill-opacity','0.6');
+    c.setAttribute('stroke','white'); c.setAttribute('stroke-width','1.5');
     c.style.cursor = 'pointer';
+    c.style.transition = 'r 0.15s, fill-opacity 0.15s';
 
-    c.addEventListener('mouseenter', function() {
-      // 점 강조
-      this.setAttribute('r', '10');
-      this.setAttribute('fill', '#3b82f6');
-      this.setAttribute('fill-opacity', '1');
-      glow.setAttribute('fill-opacity', '0.15');
+    c.addEventListener('mouseenter', function(e) {
+      this.setAttribute('r','10');
+      this.setAttribute('fill','#3b82f6');
+      this.setAttribute('fill-opacity','1');
+      glow.setAttribute('fill-opacity','0.15');
 
-      // SVG 내 구 이름 라벨
-      const labelX = cx + 14;
-      const labelY = cy - 6;
-      hoverLabel.setAttribute('x', labelX);
-      hoverLabel.setAttribute('y', labelY);
-      hoverLabel.textContent = p.gu;
-      hoverLabel.style.display = '';
-
-      // 라벨 배경 (textLength 계산)
-      const charW = p.gu.length * 8.5;
-      hoverLabelBg.setAttribute('x', labelX - 3);
-      hoverLabelBg.setAttribute('y', labelY - 13);
-      hoverLabelBg.setAttribute('width', charW + 6);
-      hoverLabelBg.setAttribute('height', 18);
-      hoverLabelBg.style.display = '';
-
-      // 떠다니는 툴팁 (범죄율/검거율 수치)
       tooltip.style.display = 'block';
-      tooltip.innerHTML = `
-        <span style="font-size:14px;font-weight:700">${p.gu}</span><br>
-        <span style="color:#fca5a5">범죄율 ${p.crime.toFixed(1)}</span>
-        &nbsp;<span style="opacity:0.4">|</span>&nbsp;
+      tooltip.innerHTML = `<span style="font-size:15px">${p.gu}</span><br>
+        <span style="color:#f87171">범죄율 ${p.crime.toFixed(1)}</span> &nbsp;
         <span style="color:#6ee7b7">검거율 ${p.arrest.toFixed(1)}%</span>`;
+
+      const s = vbScale();
+      const rx = cx * s.sx, ry = cy * s.sy;
+      tooltip.style.left = (rx + 14) + 'px';
+      tooltip.style.top  = (ry - 20) + 'px';
     });
 
     c.addEventListener('mouseleave', function() {
-      this.setAttribute('r', '7');
-      this.setAttribute('fill', '#64748b');
-      this.setAttribute('fill-opacity', '0.65');
-      glow.setAttribute('fill-opacity', '0');
-      hoverLabel.style.display = 'none';
-      hoverLabelBg.style.display = 'none';
+      this.setAttribute('r','7');
+      this.setAttribute('fill','#64748b');
+      this.setAttribute('fill-opacity','0.6');
+      glow.setAttribute('fill-opacity','0');
       tooltip.style.display = 'none';
     });
 
-    // 마우스 움직임으로 툴팁 위치 업데이트
-    c.addEventListener('mousemove', function(e) {
-      const rect = svg.closest('div').getBoundingClientRect();
-      tooltip.style.left = (e.clientX - rect.left + 14) + 'px';
-      tooltip.style.top  = (e.clientY - rect.top - 40) + 'px';
-    });
-
-    // 클릭 시 해당 구 모달
+    // 클릭 시 해당 구 모달 열기
     c.addEventListener('click', () => selectGu(p.gu));
 
+    const title = document.createElementNS(NS2,'title');
+    title.textContent = `${p.gu} — 범죄율: ${p.crime.toFixed(1)}, 검거율: ${p.arrest.toFixed(1)}%`;
+    c.appendChild(title);
     svg.appendChild(c);
   });
 }
