@@ -300,34 +300,6 @@
 
   .gu-path.dimmed { opacity: 0.35; }
 
-  /* 산점도 점 호버 시 지도에서 해당 구 강조 */
-  .gu-path.scatter-hover {
-    stroke: var(--accent-blue) !important;
-    stroke-width: 5 !important;
-    filter: drop-shadow(0 4px 10px rgba(59, 130, 246, 0.45)) brightness(1.02);
-  }
-  .gu-path.scatter-dim { opacity: 0.28; }
-  .gu-label.scatter-hover-label { fill: var(--accent-blue); font-weight: 700; }
-
-  /* 산점도 점 위 상시 이름 라벨 */
-  .scatter-point-label {
-    font-size: 10px;
-    font-weight: 500;
-    fill: var(--text-tertiary);
-    text-anchor: middle;
-    pointer-events: none;
-    paint-order: stroke;
-    stroke: var(--bg-card);
-    stroke-width: 3px;
-    stroke-linejoin: round;
-    transition: fill 0.15s;
-  }
-  .scatter-point-label.active {
-    fill: var(--accent-blue);
-    font-weight: 700;
-    font-size: 12px;
-  }
-
   .gu-label {
     font-size: 28px;
     font-weight: 500;
@@ -1823,7 +1795,6 @@ function renderMainMap() {
     if (state.selectedGu === guName) cls += ' selected';
     else if (state.selectedGu) cls += ' dimmed';
     path.setAttribute('class', cls);
-    path.setAttribute('data-gu', guName);
     
     path.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -1841,7 +1812,6 @@ function renderMainMap() {
     text.setAttribute('x', lx);
     text.setAttribute('y', ly);
     text.setAttribute('class', state.selectedGu && state.selectedGu !== guName ? 'gu-label dim' : 'gu-label');
-    text.setAttribute('data-gu-label', guName);
     text.textContent = guName;
     mapSvg.appendChild(text);
   });
@@ -2244,6 +2214,23 @@ function renderMainScatter() {
   // 점 + hover 이벤트
   const tooltip = document.getElementById('scatterTooltip');
 
+  // hover된 구 이름 SVG 라벨 (하나만 재사용)
+  const hoverLabel = document.createElementNS(NS2, 'text');
+  hoverLabel.setAttribute('font-size', '13');
+  hoverLabel.setAttribute('font-weight', '700');
+  hoverLabel.setAttribute('fill', '#1e293b');
+  hoverLabel.style.pointerEvents = 'none';
+  hoverLabel.style.display = 'none';
+  svg.appendChild(hoverLabel);
+
+  const hoverLabelBg = document.createElementNS(NS2, 'rect');
+  hoverLabelBg.setAttribute('fill', 'white');
+  hoverLabelBg.setAttribute('rx', '4');
+  hoverLabelBg.setAttribute('fill-opacity', '0.88');
+  hoverLabelBg.style.pointerEvents = 'none';
+  hoverLabelBg.style.display = 'none';
+  svg.insertBefore(hoverLabelBg, hoverLabel); // 라벨 뒤에 bg
+
   points.forEach(p => {
     const cx = xP(p.crime), cy = yP(p.arrest);
 
@@ -2261,15 +2248,6 @@ function renderMainScatter() {
     c.setAttribute('fill-opacity', '0.65');
     c.setAttribute('stroke', 'white'); c.setAttribute('stroke-width', '1.5');
     c.style.cursor = 'pointer';
-    svg.appendChild(c);
-
-    // 점 위 상시 구 이름 라벨
-    const lbl = document.createElementNS(NS2, 'text');
-    lbl.setAttribute('x', cx);
-    lbl.setAttribute('y', cy - 12);
-    lbl.setAttribute('class', 'scatter-point-label');
-    lbl.textContent = p.gu;
-    svg.appendChild(lbl);
 
     c.addEventListener('mouseenter', function() {
       // 점 강조
@@ -2278,11 +2256,21 @@ function renderMainScatter() {
       this.setAttribute('fill-opacity', '1');
       glow.setAttribute('fill-opacity', '0.15');
 
-      // 점 위 이름 라벨 강조
-      lbl.classList.add('active');
+      // SVG 내 구 이름 라벨
+      const labelX = cx + 14;
+      const labelY = cy - 6;
+      hoverLabel.setAttribute('x', labelX);
+      hoverLabel.setAttribute('y', labelY);
+      hoverLabel.textContent = p.gu;
+      hoverLabel.style.display = '';
 
-      // 위쪽 지도에서 해당 구 강조
-      highlightMapGu(p.gu);
+      // 라벨 배경 (textLength 계산)
+      const charW = p.gu.length * 8.5;
+      hoverLabelBg.setAttribute('x', labelX - 3);
+      hoverLabelBg.setAttribute('y', labelY - 13);
+      hoverLabelBg.setAttribute('width', charW + 6);
+      hoverLabelBg.setAttribute('height', 18);
+      hoverLabelBg.style.display = '';
 
       // 떠다니는 툴팁 (범죄율/검거율 수치)
       tooltip.style.display = 'block';
@@ -2298,8 +2286,8 @@ function renderMainScatter() {
       this.setAttribute('fill', '#64748b');
       this.setAttribute('fill-opacity', '0.65');
       glow.setAttribute('fill-opacity', '0');
-      lbl.classList.remove('active');
-      clearMapHighlight();
+      hoverLabel.style.display = 'none';
+      hoverLabelBg.style.display = 'none';
       tooltip.style.display = 'none';
     });
 
@@ -2312,35 +2300,8 @@ function renderMainScatter() {
 
     // 클릭 시 해당 구 모달
     c.addEventListener('click', () => selectGu(p.gu));
-  });
-}
 
-// 산점도 점 호버 → 위쪽 지도에서 해당 구 강조
-function highlightMapGu(guName) {
-  // 모달(구 선택)이 열려 있으면 지도 강조는 건너뜀
-  if (state.selectedGu) return;
-  const mapSvg = document.getElementById('seoulMap');
-  document.querySelectorAll('#seoulMap .gu-path').forEach(p => {
-    if (p.getAttribute('data-gu') === guName) {
-      p.classList.add('scatter-hover');
-      mapSvg.appendChild(p); // 맨 앞으로 (다른 구 흰 테두리에 가려짐 방지)
-    } else {
-      p.classList.add('scatter-dim');
-    }
-  });
-  const lab = document.querySelector(`#seoulMap [data-gu-label="${guName}"]`);
-  if (lab) {
-    lab.classList.add('scatter-hover-label');
-    mapSvg.appendChild(lab); // 라벨은 강조 경로보다 위로
-  }
-}
-
-function clearMapHighlight() {
-  document.querySelectorAll('#seoulMap .gu-path').forEach(p => {
-    p.classList.remove('scatter-hover', 'scatter-dim');
-  });
-  document.querySelectorAll('#seoulMap .gu-label').forEach(l => {
-    l.classList.remove('scatter-hover-label');
+    svg.appendChild(c);
   });
 }
 
